@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009"
+		xmlns:s="library://ns.adobe.com/flex/spark"
+		creationComplete="init()" title="Radio Makuto"
+		backgroundColor="#484848"
+		color.normal="#484848" textAlign.normal="center">
+	
+	<fx:Script>
+		<![CDATA[
+			
+			import flash.events.NetStatusEvent;
+			import flash.events.SampleDataEvent;
+			import flash.media.Microphone;
+			import flash.media.Sound;
+			import flash.net.*;
+			import flash.net.NetStream;
+			import flash.system.Security;
+			import flash.utils.ByteArray;
+			import flash.utils.clearInterval;
+			import flash.utils.setInterval;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			
+			import spark.components.TextInput;
+			
+			[Bindable]private var microphoneList:ArrayCollection;
+			
+			[Bindable]private var isRecording:Boolean = false;
+			
+			[Bindable]private var isPlaying:Boolean = false;
+			[Bindable]private var ganancia:Number=50;
+			
+			//[Bindable]private var soundData:ByteArray;
+			
+			private var microphone:Microphone;
+			private var sound:Sound;
+			private var channel:SoundChannel;
+			
+		    [Bindable] private var serverName:String = "rtmp://vod-renfe.knet.es/radio";
+			private var movieName:String = "stream";
+			private var nc:NetConnection = null;
+			private var nsPublish:NetStream = null;
+			private var nsPlay:NetStream = null;
+			private var connectStr:TextInput;
+			[Bindable] public  var nameStr:String;
+			private var flushVideoBufferTimer:Number = 0;
+			
+			private function init():void
+			{
+				if (Microphone.isSupported)
+				{
+					currentState = "normal";
+					microphoneList = new ArrayCollection(Microphone.names);
+					micChoices.selectedIndex=0;
+					nameStr = movieName;
+				}
+				else currentState = "unsupported";
+			}
+			
+			private function startRecording():void
+			{
+				
+				isRecording = true;
+				microphone = Microphone.getMicrophone(micChoices.selectedIndex);
+				microphone.rate = 44;
+				microphone.gain = ganancia;
+			
+			//	soundData = new ByteArray();
+				trace("Recording");
+				//microphone.setLoopBack();
+				
+				microphone.addEventListener(SampleDataEvent.SAMPLE_DATA, onSampleDataReceived);
+			
+			}
+			
+			private function stopEmision():void
+			{
+				isRecording = false;
+				trace("Stopped recording");
+				microphone.removeEventListener(SampleDataEvent.SAMPLE_DATA, onSampleDataReceived);
+				
+				
+				//////////////mario
+				// stop streaming video and audio to the publishing
+				// NetStream object
+				nsPublish.attachAudio(null);
+				//nsPublish.attachCamera(null);
+				
+				// After stopping the publishing we need to check if there is
+				// video content in the NetStream buffer. If there is data
+				// we are going to monitor the video upload progress by calling
+				// flushVideoBuffer every 250ms.  If the buffer length is 0
+				// we close the recording immediately.
+				var buffLen:Number = nsPublish.bufferLength;
+				if (buffLen > 0)
+				{
+					flushVideoBufferTimer = setInterval(flushVideoBuffer, 250);
+					
+				}
+				else
+				{
+					trace("nsPublish.publish(null)");
+					doCloseRecord();		
+					
+				}
+			}
+			
+			private function onSampleDataReceived(event:SampleDataEvent):void
+			{
+				while(event.data.bytesAvailable)
+				{
+					var sample:Number = event.data.readFloat();
+//					soundData.writeFloat(sample);
+				}
+			}
+			
+			private function soundCompleteHandler(event:Event):void
+			{
+				isPlaying = false;
+			}
+			
+			private function startPlaying():void
+			{
+				isPlaying = true
+//				soundData.position = 0;
+				sound = new Sound();
+				sound.addEventListener(SampleDataEvent.SAMPLE_DATA, soundSampleDataHandler);
+				channel = sound.play();
+				channel.addEventListener(Event.SOUND_COMPLETE, soundCompleteHandler);    
+			}
+			
+			private function soundSampleDataHandler(event:SampleDataEvent):void
+			{
+////			/* 	if (!soundData.bytesAvailable > 0)
+//				{
+//					return;
+//				}
+//				
+//				for (var i:int = 0; i < 8192; i++)
+//				{
+//					var sample:Number = 0;
+//	//				if (soundData.bytesAvailable > 0)
+////			{
+////						sample = soundData.readFloat();
+////					} */
+	//				event.data.writeFloat(sample); 
+		//			event.data.writeFloat(sample);  
+				//}
+				
+			}
+			
+			private function stopPlaying():void
+			{
+				channel.stop();
+				isPlaying = false;
+			}
+			
+			private function toggleEmitir():void
+			{
+				if (isRecording)
+				{
+					isRecording = false;
+					btnEmitir.label = "Emitir";
+					stopEmision();
+				}
+				else
+				{
+					trace("nueva nc");
+					nc = new NetConnection();
+					nc.addEventListener(NetStatusEvent.NET_STATUS, ncOnStatus);
+					nc.connect(serverName);
+					
+					
+					
+					// uncomment this to monitor frame rate and buffer length
+					//setInterval("updateStreamValues", 500);
+					
+					
+					
+					isRecording = true;
+					btnEmitir.label = "Stop Emitir";
+					startRecording();
+				}
+			}
+				
+				//añadidas por el marios
+				
+				private function ncOnStatus(infoObject:NetStatusEvent):void
+				{
+					//////////marios
+					// create a new NetStream object for publishing
+					trace("nc: "+infoObject.info.code+" ("+infoObject.info.description+")");
+					trace("nsPublish on ncOnStatus");
+					nsPublish = new NetStream(nc);
+					
+					var nsPublishClient:Object = new Object();
+					//nsPublish.client = nsPublishClient;
+					nsPublish.client = nsPublishClient;
+					
+					// trace the NetStream status information
+					nsPublish.addEventListener(NetStatusEvent.NET_STATUS, nsPublicOnStatus);
+					
+					
+					// publish the stream by name  no usamos append
+					//trace('nombrestrean: ' + nameStr);
+					nsPublish.publish(nombreStr.text, 'record');
+					
+					// add custom metadata to the header of the .flv file
+					var metaData:Object = new Object();
+					metaData["description"] = "Recorded using VideoRecording example."
+					nsPublish.send("@setDataFrame", "onMetaData", metaData);
+					
+					// attach the   microphone to the server
+					
+					nsPublish.attachAudio(microphone);
+					trace('attachAudio microfono');
+					
+					// set the buffer time to 20 seconds to buffer 20 seconds of video
+					// data for better performance and higher quality video
+					nsPublish.bufferTime = 20;
+				}
+				
+			
+		
+				
+				private function nsPublicOnStatus(infoObject:NetStatusEvent):void
+				{
+					trace("nsPublish: "+infoObject.info.code+" ("+infoObject.info.description+")");
+					
+					// After calling nsPublish.publish(false); we wait for a status
+					// event of "NetStream.Unpublish.Success" which tells us all the video
+					// and audio data has been written to the flv file. It is at this time
+					// that we can start playing the video we just recorded.
+					if (infoObject.info.code == "NetStream.Unpublish.Success")
+					{
+						doPlayStart();
+					}
+					
+					//if (infoObject.info.code == "NetStream.Play.StreamNotFound" || infoObject.info.code == "NetStream.Play.Failed")
+						//prompt.text = infoObject.info.description;
+				}
+			private function flushVideoBuffer():void
+			{
+				var buffLen:Number = nsPublish.bufferLength;
+				if (buffLen == 0)
+				{
+					clearInterval(flushVideoBufferTimer);
+					flushVideoBufferTimer = 0;
+					doCloseRecord();
+					//doPublish.label = 'Record';
+				}
+			}
+			
+			private function doCloseRecord():void
+			{
+				// after we have hit "Stop" recording and after the buffered video data has been
+				// sent to the Wowza Media Server close the publishing stream
+				nsPublish.publish("null");
+			}
+			
+			private function doPlayStart():void
+			{
+				trace("doPlayStart");
+				
+				// each time we play a video create a new NetStream object
+				nsPlay = new NetStream(nc);
+				nsPlay.addEventListener(NetStatusEvent.NET_STATUS, nsPlayOnStatus);
+				
+				var nsPlayClient:Object = new Object();
+				nsPlay.client = nsPlayClient;
+				
+				
+				// trace the NetStream play status information
+				nsPlayClient.onPlayStatus = function(infoObject:Object):void
+				{
+					trace("nsPlay: onPlayStatus: "+infoObject.code+" ("+infoObject.description+")");
+					if (infoObject.code == "NetStream.Play.Complete")
+					{
+						doPlayStop();
+					}
+				}
+			}
+			
+			private function nsPlayOnStatus(infoObject:NetStatusEvent):void
+			{
+				trace("nsPlay: onStatus: "+infoObject.info.code+" ("+infoObject.info.description+")");
+				//if (infoObject.info.code == "NetStream.Play.StreamNotFound" || infoObject.info.code == "NetStream.Play.Failed")
+					//prompt.text = infoObject.info.description;
+			}
+			
+			
+			private function doPlayStop():void
+			{
+				// when you hit stop disconnect from the NetStream object and clear the video player
+				//videoRemote.attachNetStream(null);
+				//videoRemote.clear();
+				
+				if (nsPlay != null)
+					nsPlay.close();
+				nsPlay = null;
+				
+				//doSubscribe.label = 'Play';
+			}
+			
+			
+		]]>
+	</fx:Script>
+	
+	<s:states>
+		<s:State name="normal"/>
+		<s:State name="unsupported"/>
+	</s:states>
+	
+	<s:layout>
+		<s:VerticalLayout paddingTop="10" paddingBottom="10" paddingLeft="10" paddingRight="10" gap="40" 
+						  horizontalAlign="center" verticalAlign="middle"/>
+	</s:layout>
+	
+	<s:Label id="lblSupport" includeIn="unsupported" color="#FFFFFF" fontWeight="bold"
+			 text="Este dispositivo no soporta esta apliación."/>
+	<s:VGroup includeIn="normal" width="100%" height="100%" gap="10" horizontalAlign="center"
+			  textAlign="left">
+		<s:Label width="98%" height="35" color="#FFFFFF"
+				 text="Emisor de Radio"
+				 verticalAlign="justify"/>
+		<s:Label width="98%" color="#FFFFFF" text="Server:" verticalAlign="justify"/>
+		<s:TextInput id="server" text="{serverName}" width="96%" />
+		<s:Label width="96%" color="#FFFFFF" text="String:" verticalAlign="justify"/>
+		<s:TextInput id="nombreStr" x="17" width="96%" height="60" text="{nameStr}"
+					 textAlign="left"/>
+		<s:VGroup top="70" width="96%" horizontalAlign="center" horizontalCenter="0">
+			<s:Label color="#FFFFFF" text="Selecciona microfono:"/>
+			<s:DropDownList id="micChoices" width="96%" height="100" dataProvider="{microphoneList}" selectedIndex="0"/>
+			
+		</s:VGroup>
+		<s:VGroup bottom="5" width="96%" horizontalCenter="0">
+			<s:HGroup horizontalCenter="0" verticalAlign="middle">
+			</s:HGroup>
+		</s:VGroup>
+		<s:HGroup width="100%" gap="0" textAlign="center">
+			<s:Label width="109" height="44" color="#FFFFFF" text="Mic Gain:" verticalAlign="middle"/>
+			<s:Label width="95" height="37" color="#FFFFFF" text="{micGain.value}" textAlign="left"
+					 verticalAlign="middle"/>
+		</s:HGroup>
+		<s:HSlider id="micGain" x="13" width="435" liveDragging="true" maximum="100" minimum="0"
+				   value="{ganancia}"/>
+		<s:Button id="btnEmitir" height="90" label="Emitir" width="442" click="toggleEmitir()"
+				  enabled="{!isPlaying}"/>
+	</s:VGroup>  
+</s:View>
