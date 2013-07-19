@@ -313,8 +313,9 @@
 	</s:states>
 	
 	<s:layout>
-		<s:VerticalLayout paddingTop="10" paddingBottom="10" paddingLeft="10" paddingRight="10" gap="40" 
-						  horizontalAlign="center" verticalAlign="middle"/>
+		<s:VerticalLayout gap="40" horizontalAlign="center" paddingBottom="10" paddingLeft="10"
+						  paddingRight="10" paddingTop="10" verticalAlign="middle"
+						  gap.normal="20"/>
 	</s:layout>
 	
 	<s:Label id="lblSupport" includeIn="unsupported" color="#FFFFFF" fontWeight="bold"
@@ -340,12 +341,12 @@
 		</s:VGroup>
 		<s:HGroup width="100%" gap="0" textAlign="center">
 			<s:Label width="109" height="44" color="#FFFFFF" text="Mic Gain:" verticalAlign="middle"/>
-			<s:Label width="95" height="37" color="#FFFFFF" text="{micGain.value}" textAlign="left"
+			<s:Label width="95" height="44" color="#FFFFFF" text="{micGain.value}" textAlign="left"
 					 verticalAlign="middle"/>
 		</s:HGroup>
 		<s:HSlider id="micGain" x="13" width="435" liveDragging="true" maximum="100" minimum="0"
 				   value="{ganancia}"/>
-		<s:Button id="btnEmitir" height="90" label="Emitir" width="442" click="toggleEmitir()"
+		<s:Button id="btnEmitir" height="53" label="Emitir" width="442" click="toggleEmitir()"
 				  enabled="{!isPlaying}"/>
 	</s:VGroup>  
 </s:View>
