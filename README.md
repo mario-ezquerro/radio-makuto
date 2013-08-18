@@ -1,6 +1,5 @@
 Radio Makuto
 ============
-**actionscript**
 
 Emision de streaming
 Programa para compilar en Flex con AIR para convertir un terminarl con android/IOS en un emisor de streaming de audio.
