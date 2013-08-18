@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<fxpProperties abbreviated="false" authoringTool="Flex Builder" compiles="true" parentProject="8fa7f7ee-525c-4978-bc8c-62fafdd1d116" projectUUID="8fa7f7ee-525c-4978-bc8c-62fafdd1d116" pureCatalystProject="false" sdkVersion="4.6.0" uuid="55e823d1-dbc4-46e9-a1bb-e04b6d46b76c" version="15">
+  <projects/>
+  <src/>
+  <swc>
+    <linked location="sdkPlaceHolder" path="sdkPlaceHolder" position="0" uuid="55e823d1-dbc4-46e9-a1bb-e04b6d46b76c"/>
+    <linked location="C:/Documents and Settings/mario/Adobe Flash Builder 4.5/radio makuto/libs" path="/libs" position="1" uuid="55e99a85-0b06-489b-8682-7f52b974aa20"/>
+  </swc>
+  <misc/>
+  <theme/>
+  <mxmlFormattingPrefs groupAttributesByState="true" maxLineWidth="100" mxmlAlignAttributes="true" mxmlAttributeOrder="id,userLabel,includeIn,excludeFrom,visible,x,y,z,left,right,top,bottom,width,height,minWidth,minHeight,maxWidth,maxHeight,label" mxmlKeepAttributeValuesOrganized="true"/>
+</fxpProperties>
